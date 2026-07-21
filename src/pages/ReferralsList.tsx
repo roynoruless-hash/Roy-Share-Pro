@@ -105,13 +105,14 @@ export default function ReferralsList() {
       const token = await user.getIdToken();
       
       const payload = {
-        referralReward: parseFloat(rewardAmount) || 0
+        referralReward: parseFloat(rewardAmount) || 0,
+        botId: botId
       };
 
       // Upsert using PUT to /api/settings/:botId
       // Ensure the setting document exists or creates it if not (Firebase set with merge is supported via standard endpoints if implemented).
       // If crud.ts doesn't support direct create via PUT when not exist, we'll try PUT first, then POST if failed.
-      const res = await fetch(`/api/settings/${botId}`, {
+      let res = await fetch(`/api/settings/${botId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -122,7 +123,7 @@ export default function ReferralsList() {
       
       if (!res.ok && res.status === 404) {
          // Create it via POST
-         await fetch(`/api/settings`, {
+         res = await fetch(`/api/settings`, {
            method: 'POST',
            headers: {
              'Authorization': `Bearer ${token}`,
@@ -130,8 +131,10 @@ export default function ReferralsList() {
            },
            body: JSON.stringify({ ...payload, id: botId }) // assuming id can be passed or we might need to adjust.
          });
-         // Notice: If POST doesn't allow setting explicit ID, we might need to adjust server-side or we rely on PUT (update with merge / doc().set).
-         // crud.ts typically uses doc.update() for PUT, which fails if not exists.
+      }
+      
+      if (!res.ok) {
+         throw new Error(`Failed to save settings: ${res.statusText}`);
       }
       
       alert('Settings saved successfully');

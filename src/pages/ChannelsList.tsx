@@ -76,15 +76,18 @@ export default function ChannelsList() {
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Failed to save channel');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to save channel: HTTP ${response.status}`);
+      }
       
       setIsModalOpen(false);
       setEditingChannel(null);
       setFormData({ name: '', chatId: '', inviteLink: '', isMandatory: true });
       fetchChannels();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Error saving channel');
+      alert(error.message || 'Error saving channel');
     }
   };
 
@@ -97,11 +100,14 @@ export default function ChannelsList() {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!response.ok) throw new Error('Failed to delete');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to delete channel: HTTP ${response.status}`);
+      }
       fetchChannels();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Error deleting channel');
+      alert(error.message || 'Error deleting channel');
     }
   };
 

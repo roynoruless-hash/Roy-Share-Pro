@@ -110,7 +110,10 @@ export default function UsersList() {
         body: JSON.stringify({ status: newStatus })
       });
       
-      if (!response.ok) throw new Error('Failed to update status');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to update status: HTTP ${response.status}`);
+      }
       
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
       if (selectedUser?.id === userId) {

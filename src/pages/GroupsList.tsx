@@ -75,15 +75,18 @@ export default function GroupsList() {
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Failed to save group');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to save group: HTTP ${response.status}`);
+      }
       
       setIsModalOpen(false);
       setEditingGroup(null);
       setFormData({ name: '', chatId: '', inviteLink: '', isMandatory: true });
       fetchGroups();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Error saving group');
+      alert(error.message || 'Error saving group');
     }
   };
 
@@ -96,11 +99,14 @@ export default function GroupsList() {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!response.ok) throw new Error('Failed to delete');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to delete group: HTTP ${response.status}`);
+      }
       fetchGroups();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert('Error deleting group');
+      alert(error.message || 'Error deleting group');
     }
   };
 

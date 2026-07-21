@@ -103,7 +103,10 @@ export default function BotsList() {
         body: JSON.stringify({ status })
       });
       
-      if (!res.ok) throw new Error('Failed to update status');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Failed to update status: HTTP ${res.status}`);
+      }
       setBots(bots.map(b => b.id === id ? { ...b, status: status as any } : b));
     } catch (err: any) {
       alert(err.message);
