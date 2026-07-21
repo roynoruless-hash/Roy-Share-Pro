@@ -114,6 +114,33 @@ export function setupBot(bot: Bot<CustomContext>) {
     }
   });
 
+  
+  bot.callbackQuery(['withdraw_upi', 'withdraw_redeem'], async (ctx) => {
+    const db = getDb();
+    const method = ctx.match === 'withdraw_upi' ? 'UPI' : 'Redeem Code';
+    
+    // Check pending withdrawals
+    const pendingSnap = await db.collection('withdrawals')
+      .where('botId', '==', ctx.botId)
+      .where('telegramId', '==', ctx.from?.id)
+      .where('status', '==', 'pending')
+      .limit(1).get();
+      
+    if (!pendingSnap.empty) {
+      await ctx.answerCallbackQuery({ text: "You already have a pending withdrawal.", show_alert: true });
+      return;
+    }
+    
+    if (method === 'UPI') {
+       ctx.session.state = 'awaiting_withdraw_upi_id';
+       await ctx.reply("Please enter your UPI ID:");
+    } else {
+       ctx.session.state = 'awaiting_withdraw_amount_redeem';
+       await ctx.reply("Please enter the amount you want to withdraw for Redeem Code:");
+    }
+    await ctx.answerCallbackQuery();
+  });
+
   bot.on('message:text', async (ctx) => {
     const state = ctx.session.state;
     const text = ctx.message.text.trim();
@@ -373,6 +400,106 @@ export function setupBot(bot: Bot<CustomContext>) {
        ctx.session.state = 'registered';
        await ctx.reply("Registration successful! 🎉");
        await sendMainMenu(ctx);
+       return;
+    }
+
+    
+    if (state === 'awaiting_withdraw_upi_id') {
+      ctx.session.tempUpiId = text;
+      ctx.session.state = 'awaiting_withdraw_amount_upi';
+      await ctx.reply("Great! Now enter the amount you want to withdraw:");
+      return;
+    }
+
+    if (state === 'awaiting_withdraw_amount_upi' || state === 'awaiting_withdraw_amount_redeem') {
+       const amount = parseFloat(text);
+       if (isNaN(amount) || amount <= 0) {
+          await ctx.reply("Please enter a valid amount greater than 0.");
+          return;
+       }
+       
+       const method = state === 'awaiting_withdraw_amount_upi' ? 'UPI' : 'Redeem Code';
+       
+       const settingsSnap = await db.collection('settings').doc(ctx.botId).get();
+       const settings = settingsSnap.exists ? settingsSnap.data() : {};
+       const minWithdrawal = method === 'UPI' ? (settings?.upiMinWithdrawal || 10) : (settings?.redeemMinWithdrawal || 50);
+       
+       if (amount < minWithdrawal) {
+          await ctx.reply(`Minimum withdrawal for ${method} is ${minWithdrawal}. Please enter a valid amount.`);
+          return;
+       }
+       
+       // Verify user & wallet
+       const userSnap = await db.collection('users')
+         .where('botId', '==', ctx.botId)
+         .where('telegramId', '==', ctx.from?.id)
+         .limit(1).get();
+         
+       if (userSnap.empty) return;
+       const user = userSnap.docs[0].data();
+       
+       const walletRef = db.collection('wallets').doc(user.walletId);
+       
+       try {
+           await db.runTransaction(async (t) => {
+              // 1. Check for any existing pending withdrawals for this user within the transaction
+              const pendingQuery = db.collection('withdrawals')
+                 .where('botId', '==', ctx.botId)
+                 .where('telegramId', '==', user.telegramId)
+                 .where('status', '==', 'pending')
+                 .limit(1);
+                 
+              const pendingSnap = await t.get(pendingQuery);
+              if (!pendingSnap.empty) {
+                 throw new Error("You already have a pending withdrawal. Please wait for it to be processed.");
+              }
+
+              // 2. Read the wallet fresh inside the transaction
+              const walletSnap = await t.get(walletRef);
+              if (!walletSnap.exists) throw new Error("Wallet not found.");
+              const wallet = walletSnap.data()!;
+              
+              // 3. Prevent negative balance
+              if (wallet.balance < amount) {
+                  throw new Error(`Insufficient balance. Your current balance is ${wallet.balance}.`);
+              }
+              
+              // 4. Safely deduct from balance and move to pendingEarnings
+              t.update(walletRef, {
+                 balance: wallet.balance - amount,
+                 pendingEarnings: (wallet.pendingEarnings || 0) + amount,
+                 updatedAt: new Date()
+              });
+              
+              // 5. Create the new withdrawal request
+              const withdrawRef = db.collection('withdrawals').doc();
+              t.set(withdrawRef, {
+                 botId: ctx.botId,
+                 userId: userSnap.docs[0].id,
+                 telegramId: user.telegramId,
+                 fullName: user.fullName,
+                 telegramUsername: user.telegramUsername,
+                 amount: amount,
+                 method: method,
+                 methodDetail: method === 'UPI' ? ctx.session.tempUpiId : null,
+                 status: 'pending',
+                 createdAt: new Date(),
+                 updatedAt: new Date()
+              });
+           });
+           
+           ctx.session.state = 'registered';
+           ctx.session.tempUpiId = undefined;
+           await ctx.reply(`✅ Withdrawal request for ${amount} via ${method} has been submitted successfully.
+It will be processed shortly.`);
+           
+           await sendMainMenu(ctx);
+       } catch (err: any) {
+           await ctx.reply(`❌ ${err.message}`);
+           ctx.session.state = 'registered';
+           ctx.session.tempUpiId = undefined;
+       }
+       
        return;
     }
 

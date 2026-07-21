@@ -89,9 +89,41 @@ Status: ${user.status}`;
      return;
   }
 
+  if (text === '💸 Withdraw') {
+     const settingsSnap = await db.collection('settings').doc(ctx.botId).get();
+     const settings = settingsSnap.exists ? settingsSnap.data() : {};
+     
+     if (settings?.withdrawalsEnabled === false) {
+       await ctx.reply("Withdrawals are currently disabled.");
+       return;
+     }
+
+     const userSnap = await db.collection('users')
+       .where('botId', '==', ctx.botId)
+       .where('telegramId', '==', telegramId)
+       .limit(1).get();
+     
+     if (userSnap.empty) return;
+     const user = userSnap.docs[0].data();
+     const walletSnap = await db.collection('wallets').doc(user.walletId).get();
+     const wallet = walletSnap.data();
+     
+     const upiMin = settings?.upiMinWithdrawal || 10;
+     const redeemMin = settings?.redeemMinWithdrawal || 50;
+
+     const textMsg = `💸 *Withdraw Funds*\n\nYour Current Balance: *${wallet?.balance || 0}*\n\nSelect a withdrawal method below:\n- UPI (Min: ${upiMin})\n- Redeem Code (Min: ${redeemMin})`;
+     
+     const { InlineKeyboard } = await import('grammy');
+     const inlineKeyboard = new InlineKeyboard()
+       .text('UPI', 'withdraw_upi').row()
+       .text('Redeem Code', 'withdraw_redeem');
+       
+     await ctx.reply(textMsg, { parse_mode: 'Markdown', reply_markup: inlineKeyboard });
+     return;
+  }
+
   // Stub other handlers
   const stubs: Record<string, string> = {
-    '💸 Withdraw': 'Withdrawal module coming soon.',
     '🚀 Earn Money': 'Earn Money modules coming soon.',
     '📊 History': 'History module coming soon.',
     '📞 Support': 'Support module coming soon.'

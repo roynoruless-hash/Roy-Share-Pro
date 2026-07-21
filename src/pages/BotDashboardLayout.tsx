@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Settings, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Users, Settings, MessageSquare, CreditCard } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface BotData {
@@ -55,6 +55,7 @@ export default function BotDashboardLayout() {
     { name: 'Channels', href: `/bots/${botId}/channels`, icon: MessageSquare },
     { name: 'Groups', href: `/bots/${botId}/groups`, icon: Users },
     { name: 'Referrals', href: `/bots/${botId}/referrals`, icon: Users },
+    { name: 'Withdrawals', href: `/bots/${botId}/withdrawals`, icon: CreditCard },
   ];
 
   return (

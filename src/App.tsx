@@ -15,6 +15,7 @@ import UsersList from './pages/UsersList';
 import ChannelsList from './pages/ChannelsList';
 import GroupsList from './pages/GroupsList';
 import ReferralsList from './pages/ReferralsList';
+import WithdrawalsList from './pages/WithdrawalsList';
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
                 <Route path="channels" element={<ChannelsList />} />
                 <Route path="groups" element={<GroupsList />} />
                 <Route path="referrals" element={<ReferralsList />} />
+                <Route path="withdrawals" element={<WithdrawalsList />} />
               </Route>
             </Route>
           </Route>

@@ -8,6 +8,7 @@ import {
   updateDocument, 
   deleteDocument 
 } from '../controllers/crud.js';
+import withdrawalsRouter from './withdrawals.js';
 
 const router = Router();
 
@@ -106,10 +107,8 @@ walletsRouter.get('/', getDocuments('wallets'));
 walletsRouter.get('/:id', getDocument('wallets'));
 router.use('/wallets', walletsRouter);
 
-// Example of a sensitive endpoint using strict rate limiter
-router.post('/withdrawals/request', strictLimiter, (req, res) => {
-  // Logic for withdrawal request will go here in later steps
-  res.status(501).json({ error: 'Not Implemented Yet' });
-});
+// Withdrawals endpoints
+withdrawalsRouter.use(requireAdmin);
+router.use('/withdrawals', withdrawalsRouter);
 
 export default router;
