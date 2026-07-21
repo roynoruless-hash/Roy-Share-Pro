@@ -372,6 +372,17 @@ export function setupBot(bot: Bot<CustomContext>) {
                       totalEarnings: FieldValue.increment(rewardAmount),
                       updatedAt: new Date()
                    });
+                   const transactionRef = db.collection('transactions').doc();
+                   batch.set(transactionRef, {
+                      botId: ctx.botId,
+                      userId: referrerSnap.docs[0].id,
+                      telegramId: referrer.telegramId,
+                      type: 'referral_bonus',
+                      amount: rewardAmount,
+                      status: 'completed',
+                      detail: `Referral bonus for @${ctx.from?.username || ctx.from?.first_name || ctx.from?.id}`,
+                      createdAt: new Date()
+                   });
                 }
              } else {
                 // Not a member anymore, keep it as failed/pending and don't credit
@@ -485,6 +496,19 @@ export function setupBot(bot: Bot<CustomContext>) {
                  status: 'pending',
                  createdAt: new Date(),
                  updatedAt: new Date()
+              });
+              
+              // 6. Create transaction record
+              const txRef = db.collection('transactions').doc();
+              t.set(txRef, {
+                 botId: ctx.botId,
+                 userId: userSnap.docs[0].id,
+                 telegramId: user.telegramId,
+                 type: 'withdrawal_request',
+                 amount: -amount,
+                 status: 'pending',
+                 detail: `Withdrawal via ${method}`,
+                 createdAt: new Date()
               });
            });
            

@@ -49,6 +49,18 @@ router.post('/:id/approve', async (req, res) => {
         updatedAt: new Date()
       });
       
+      const txRef = db.collection('transactions').doc();
+      t.set(txRef, {
+         botId: withdrawal.botId,
+         userId: userSnap.docs[0].id,
+         telegramId: withdrawal.telegramId,
+         type: 'withdrawal_approved',
+         amount: -withdrawal.amount,
+         status: 'completed',
+         detail: `Withdrawal approved via ${withdrawal.method}`,
+         createdAt: new Date()
+      });
+      
       // We also need to notify the user via Telegram here. We'll try dynamic import of bot instance or fetch API
       const botTokenSnap = await db.collection('bots').doc(withdrawal.botId).get();
       if (botTokenSnap.exists) {
@@ -112,6 +124,18 @@ router.post('/:id/reject', async (req, res) => {
         pendingEarnings: (wallet.pendingEarnings || 0) - withdrawal.amount,
         balance: (wallet.balance || 0) + withdrawal.amount,
         updatedAt: new Date()
+      });
+      
+      const txRef = db.collection('transactions').doc();
+      t.set(txRef, {
+         botId: withdrawal.botId,
+         userId: userSnap.docs[0].id,
+         telegramId: withdrawal.telegramId,
+         type: 'withdrawal_rejected',
+         amount: withdrawal.amount,
+         status: 'completed',
+         detail: `Withdrawal rejected: ${reason}`,
+         createdAt: new Date()
       });
       
       const botTokenSnap = await db.collection('bots').doc(withdrawal.botId).get();

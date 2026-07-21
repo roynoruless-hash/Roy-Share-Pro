@@ -122,10 +122,49 @@ Status: ${user.status}`;
      return;
   }
 
+
+  if (text === '📊 History') {
+     // Fetching all for this user/bot and sorting in memory to avoid needing a custom composite index
+     const txSnap = await db.collection('transactions')
+       .where('botId', '==', ctx.botId)
+       .where('telegramId', '==', telegramId)
+       .get();
+       
+     if (txSnap.empty) {
+        await ctx.reply("No transactions found in your history.");
+        return;
+     }
+     
+     let historyText = `📊 *Your Transaction History* (Last 15)\n\n`;
+     const sortedDocs = txSnap.docs.sort((a, b) => {
+        const dateA = a.data().createdAt ? (a.data().createdAt._seconds || a.data().createdAt.seconds || 0) : 0;
+        const dateB = b.data().createdAt ? (b.data().createdAt._seconds || b.data().createdAt.seconds || 0) : 0;
+        return dateB - dateA;
+     }).slice(0, 15);
+     
+     sortedDocs.forEach((doc, index) => {
+        const tx = doc.data();
+        const date = tx.createdAt ? new Date(tx.createdAt._seconds ? tx.createdAt._seconds * 1000 : (tx.createdAt.seconds ? tx.createdAt.seconds * 1000 : tx.createdAt)).toLocaleDateString() : 'N/A';
+        const sign = tx.amount > 0 ? '+' : '';
+        const amountStr = `${sign}${tx.amount}`;
+        const typeIcon = tx.type === 'referral_bonus' ? '🎁' : 
+                         tx.type === 'withdrawal_request' ? '⏳' :
+                         tx.type === 'withdrawal_approved' ? '✅' :
+                         tx.type === 'withdrawal_rejected' ? '❌' : '🔹';
+                         
+        historyText += `${index + 1}. ${typeIcon} *${amountStr}* | ${date}\n`;
+        if (tx.detail) {
+           historyText += `   └ ${tx.detail}\n`;
+        }
+     });
+     
+     await ctx.reply(historyText, { parse_mode: 'Markdown' });
+     return;
+  }
+
   // Stub other handlers
   const stubs: Record<string, string> = {
     '🚀 Earn Money': 'Earn Money modules coming soon.',
-    '📊 History': 'History module coming soon.',
     '📞 Support': 'Support module coming soon.'
   };
 
