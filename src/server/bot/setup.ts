@@ -115,17 +115,20 @@ export function setupBot(bot: Bot<CustomContext>) {
       const oneMinAgo = new Date(now - 60 * 1000);
       const oneHourAgo = new Date(now - 60 * 60 * 1000);
 
-      const recentOtpsSnap = await db.collection('otpVerifications')
+      const allOtpsSnap = await db.collection('otpVerifications')
         .where('botId', '==', ctx.botId)
         .where('telegramId', '==', ctx.from?.id)
-        .where('createdAt', '>=', oneHourAgo)
         .get();
 
       let lastMinCount = 0;
-      let lastHourCount = recentOtpsSnap.size;
+      let lastHourCount = 0;
 
-      recentOtpsSnap.forEach(doc => {
-        if (doc.data().createdAt.toDate() >= oneMinAgo) {
+      allOtpsSnap.forEach(doc => {
+        const createdAt = doc.data().createdAt.toDate();
+        if (createdAt >= oneHourAgo) {
+          lastHourCount++;
+        }
+        if (createdAt >= oneMinAgo) {
           lastMinCount++;
         }
       });
@@ -172,20 +175,22 @@ export function setupBot(bot: Bot<CustomContext>) {
     }
 
     if (state === 'awaiting_otp') {
-       const otpDocs = await db.collection('otpVerifications')
+       const allOtpDocs = await db.collection('otpVerifications')
           .where('botId', '==', ctx.botId)
           .where('telegramId', '==', ctx.from?.id)
-          .where('verifiedAt', '==', null)
-          .orderBy('expiresAt', 'desc')
           .get();
 
-       if (otpDocs.empty) {
+       const pendingOtps = allOtpDocs.docs
+          .filter(doc => doc.data().verifiedAt === null)
+          .sort((a, b) => b.data().expiresAt.toDate().getTime() - a.data().expiresAt.toDate().getTime());
+
+       if (pendingOtps.length === 0) {
           await ctx.reply("No active OTP request found. Please start over with /start.");
           ctx.session.state = undefined;
           return;
        }
 
-       const otpDoc = otpDocs.docs[0];
+       const otpDoc = pendingOtps[0];
        const otpData = otpDoc.data();
 
        if (otpData.expiresAt.toDate() < new Date()) {
