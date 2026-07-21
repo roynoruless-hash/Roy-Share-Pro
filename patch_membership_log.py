@@ -1,42 +1,9 @@
-import { InlineKeyboard } from 'grammy';
-import { CustomContext } from '../context.js';
-import { getDb } from '../../config/firebase.js';
+import re
 
+with open('src/server/bot/middleware/membership.ts', 'r') as f:
+    content = f.read()
 
-export async function checkMembershipSilent(ctx: CustomContext): Promise<boolean> {
-  const db = getDb();
-  const botId = ctx.botId;
-  const userId = ctx.from?.id;
-  
-  if (!userId) return false;
-
-  const channelsSnap = await db.collection('channels').where('botId', '==', botId).get();
-  const groupsSnap = await db.collection('groups').where('botId', '==', botId).get();
-
-  const mandatoryChats: any[] = [
-    ...channelsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })).filter(c => c.isMandatory === true),
-    ...groupsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })).filter(g => g.isMandatory === true)
-  ];
-
-  if (mandatoryChats.length === 0) return true;
-
-  for (const chat of mandatoryChats) {
-    try {
-      const parsedChatId = !isNaN(Number(chat.chatId)) ? Number(chat.chatId) : chat.chatId;
-      const member = await ctx.api.getChatMember(parsedChatId, userId);
-      const status = member.status;
-      if (status === 'left' || status === 'kicked') {
-        return false;
-      }
-    } catch (e: any) {
-      console.error(`Silent check error for ${chat.name} (${chat.chatId}):`, e.message);
-      return false;
-    }
-  }
-
-  return true;
-}
-
+new_func = """
 export async function checkMembership(ctx: CustomContext): Promise<boolean> {
   const db = getDb();
   const botId = ctx.botId;
@@ -52,16 +19,21 @@ export async function checkMembership(ctx: CustomContext): Promise<boolean> {
     ...groupsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })).filter(g => g.isMandatory === true)
   ];
 
+  console.log('--- MANDATORY CHATS ---');
+  mandatoryChats.forEach(c => console.log(c.name, c.isMandatory, typeof c.isMandatory));
+
   if (mandatoryChats.length === 0) return true;
 
   const notJoined: any[] = [];
 
   for (const chat of mandatoryChats) {
     try {
+      // Need to make sure chatId is treated properly. Some APIs expect it as number if it's numeric, or string if @username.
       const parsedChatId = !isNaN(Number(chat.chatId)) ? Number(chat.chatId) : chat.chatId;
+      console.log(`Checking chat ${chat.name} (${parsedChatId}) for user ${userId}`);
       const member = await ctx.api.getChatMember(parsedChatId, userId);
       const status = member.status;
-      
+      console.log(`Status for ${chat.name}: ${status}`);
       if (status === 'left' || status === 'kicked') {
         notJoined.push(chat);
       }
@@ -71,6 +43,8 @@ export async function checkMembership(ctx: CustomContext): Promise<boolean> {
       notJoined.push(chat);
     }
   }
+  
+  console.log('--- NOT JOINED ---', notJoined.map(c => c.name));
 
   if (notJoined.length > 0) {
     const keyboard = new InlineKeyboard();
@@ -85,3 +59,9 @@ export async function checkMembership(ctx: CustomContext): Promise<boolean> {
 
   return true;
 }
+"""
+
+content = re.sub(r'export async function checkMembership\(ctx: CustomContext\): Promise<boolean> \{.*$', new_func, content, flags=re.DOTALL)
+
+with open('src/server/bot/middleware/membership.ts', 'w') as f:
+    f.write(content)
