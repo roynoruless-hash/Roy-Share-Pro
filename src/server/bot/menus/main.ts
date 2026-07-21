@@ -124,12 +124,19 @@ Status: ${user.status}`;
 
 
   if (text === '📊 History') {
-     const txSnap = await db.collection('transactions')
-       .where('botId', '==', ctx.botId)
-       .where('telegramId', '==', telegramId)
-       .orderBy('createdAt', 'desc')
-       .limit(15)
-       .get();
+     let txSnap;
+     try {
+       txSnap = await db.collection('transactions')
+         .where('botId', '==', ctx.botId)
+         .where('telegramId', '==', telegramId)
+         .orderBy('createdAt', 'desc')
+         .limit(15)
+         .get();
+     } catch (e: any) {
+       console.error("History query failed (likely missing index):", e);
+       await ctx.reply("Error fetching history. The database is currently optimizing. Please try again later.");
+       return;
+     }
        
      if (txSnap.empty) {
         await ctx.reply("No transactions found in your history.");

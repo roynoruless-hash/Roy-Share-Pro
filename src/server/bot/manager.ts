@@ -38,6 +38,10 @@ export const getBotConfig = async (botId: string): Promise<BotConfig | null> => 
 
   setupBot(bot);
   
+  bot.catch((err) => {
+    console.error(`Global bot error for bot ${botId}:`, err);
+  });
+  
   // Use a specific webhook secret if defined, otherwise fallback to the token itself
   // for validating inbound webhooks from Telegram.
   const secretToken = botData.webhookSecret || token;

@@ -17,6 +17,7 @@ export function setupBot(bot: Bot<CustomContext>) {
 
   // Global ban check middleware
   bot.use(async (ctx, next) => {
+    console.log('--- GLOBAL BAN CHECK ---');
     const telegramId = ctx.from?.id;
     if (telegramId) {
       const db = getDb();
@@ -42,6 +43,7 @@ export function setupBot(bot: Bot<CustomContext>) {
 
 
   bot.command('start', async (ctx) => {
+    console.log('--- START COMMAND TRIGGERED ---');
     const telegramId = ctx.from?.id;
     if (!telegramId) return;
     

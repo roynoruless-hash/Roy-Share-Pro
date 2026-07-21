@@ -3,6 +3,7 @@ import { getDb } from '../config/firebase.js';
 export function firestoreStorage() {
   return {
     read: async (key: string) => {
+      console.log('--- SESSION READ ---', key);
       const db = getDb();
       const doc = await db.collection('botSessions').doc(key).get();
       return doc.exists ? doc.data() : undefined;
