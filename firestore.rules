@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Core function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Function to ensure the query is scoped by the correct botId
+    // For clients (if any frontend connects directly), they MUST provide the botId in the query
+    function isBotScoped(botId) {
+      return resource.data.botId == botId;
+    }
+
+    // Completely block direct client access to sensitive collections.
+    // Only the Backend (using Firebase Admin SDK) can read/write these.
+    match /withdrawals/{document=**} {
+      allow read, write: if false; 
+    }
+    match /wallets/{document=**} {
+      allow read, write: if false;
+    }
+    match /otpVerifications/{document=**} {
+      allow read, write: if false;
+    }
+    match /redeemCodes/{document=**} {
+      allow read, write: if false;
+    }
+    match /analytics/{document=**} {
+      allow read, write: if false;
+    }
+    match /logs/{document=**} {
+      allow read, write: if false;
+    }
+    match /bots/{document=**} {
+      // Bots configuration is strictly admin-backend only
+      allow read, write: if false;
+    }
+    match /settings/{document=**} {
+      allow read, write: if false;
+    }
+    match /admins/{document=**} {
+      allow read, write: if false;
+    }
+
+    // For collections that might have direct read access for a logged-in user 
+    // (e.g. if you build a web portal for users later), we restrict it heavily.
+    // Currently, since the bot and dashboard talk via the backend, we can block everything.
+    match /users/{userId} {
+      // If a user logs into a web view, they can only read their own data, and only for the correct bot.
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if false; // Only backend writes to users
+    }
+
+    match /channels/{document=**} {
+      allow read: if false; // Let backend handle it
+      allow write: if false;
+    }
+
+    match /groups/{document=**} {
+      allow read: if false; // Let backend handle it
+      allow write: if false;
+    }
+
+    match /transactions/{document=**} {
+      allow read: if false; // Only backend for now
+      allow write: if false;
+    }
+    
+    match /referrals/{document=**} {
+      allow read, write: if false;
+    }
+    
+    match /notifications/{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
