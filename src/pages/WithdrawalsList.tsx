@@ -159,13 +159,13 @@ export default function WithdrawalsList() {
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 sm:space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Withdrawals Management</h1>
         <p className="text-gray-500 mt-1">Manage withdrawal settings and requests for this bot.</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Settings</h2>
         <form onSubmit={saveSettings} className="space-y-4 max-w-xl">
           <div className="flex items-center space-x-3">
@@ -181,7 +181,7 @@ export default function WithdrawalsList() {
             </label>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">UPI Min. Amount</label>
               <input
@@ -220,8 +220,8 @@ export default function WithdrawalsList() {
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Withdrawal Requests</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 py-3 font-medium text-gray-700">User</th>

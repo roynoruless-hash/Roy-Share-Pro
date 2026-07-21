@@ -73,8 +73,8 @@ export default function BotDashboardLayout() {
         </div>
       </div>
 
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-4">
+      <div className="border-b border-gray-200 overflow-x-auto">
+        <nav className="flex gap-4 min-w-max px-1">
           {tabs.map((tab) => {
             const isActive = location.pathname.startsWith(tab.href);
             return (
