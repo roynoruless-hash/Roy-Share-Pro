@@ -16,6 +16,7 @@ import ChannelsList from './pages/ChannelsList';
 import GroupsList from './pages/GroupsList';
 import ReferralsList from './pages/ReferralsList';
 import WithdrawalsList from './pages/WithdrawalsList';
+import BotSettings from './pages/BotSettings';
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
                 <Route path="groups" element={<GroupsList />} />
                 <Route path="referrals" element={<ReferralsList />} />
                 <Route path="withdrawals" element={<WithdrawalsList />} />
+                <Route path="settings" element={<BotSettings />} />
               </Route>
             </Route>
           </Route>

@@ -56,6 +56,7 @@ export default function BotDashboardLayout() {
     { name: 'Groups', href: `/bots/${botId}/groups`, icon: Users },
     { name: 'Referrals', href: `/bots/${botId}/referrals`, icon: Users },
     { name: 'Withdrawals', href: `/bots/${botId}/withdrawals`, icon: CreditCard },
+    { name: 'Settings', href: `/bots/${botId}/settings`, icon: Settings },
   ];
 
   return (

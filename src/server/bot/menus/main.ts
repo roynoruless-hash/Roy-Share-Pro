@@ -124,10 +124,11 @@ Status: ${user.status}`;
 
 
   if (text === '📊 History') {
-     // Fetching all for this user/bot and sorting in memory to avoid needing a custom composite index
      const txSnap = await db.collection('transactions')
        .where('botId', '==', ctx.botId)
        .where('telegramId', '==', telegramId)
+       .orderBy('createdAt', 'desc')
+       .limit(15)
        .get();
        
      if (txSnap.empty) {
@@ -136,13 +137,7 @@ Status: ${user.status}`;
      }
      
      let historyText = `📊 *Your Transaction History* (Last 15)\n\n`;
-     const sortedDocs = txSnap.docs.sort((a, b) => {
-        const dateA = a.data().createdAt ? (a.data().createdAt._seconds || a.data().createdAt.seconds || 0) : 0;
-        const dateB = b.data().createdAt ? (b.data().createdAt._seconds || b.data().createdAt.seconds || 0) : 0;
-        return dateB - dateA;
-     }).slice(0, 15);
-     
-     sortedDocs.forEach((doc, index) => {
+     txSnap.docs.forEach((doc, index) => {
         const tx = doc.data();
         const date = tx.createdAt ? new Date(tx.createdAt._seconds ? tx.createdAt._seconds * 1000 : (tx.createdAt.seconds ? tx.createdAt.seconds * 1000 : tx.createdAt)).toLocaleDateString() : 'N/A';
         const sign = tx.amount > 0 ? '+' : '';
@@ -162,10 +157,38 @@ Status: ${user.status}`;
      return;
   }
 
+
+  if (text === '📞 Support') {
+     const settingsSnap = await db.collection('settings').doc(ctx.botId).get();
+     let supportUsername = '';
+     let supportEmail = '';
+     
+     if (settingsSnap.exists) {
+        const settings = settingsSnap.data()!;
+        supportUsername = settings.supportUsername || '';
+        supportEmail = settings.supportEmail || '';
+     }
+     
+     if (!supportUsername && !supportEmail) {
+        await ctx.reply("📞 Support is currently unavailable. Please check back later.");
+        return;
+     }
+     
+     let supportMsg = `📞 Need help? Contact us:\n\n`;
+     if (supportUsername) {
+        supportMsg += `Username: ${supportUsername}\n`;
+     }
+     if (supportEmail) {
+        supportMsg += `Email: ${supportEmail}\n`;
+     }
+     
+     await ctx.reply(supportMsg);
+     return;
+  }
+
   // Stub other handlers
   const stubs: Record<string, string> = {
-    '🚀 Earn Money': 'Earn Money modules coming soon.',
-    '📞 Support': 'Support module coming soon.'
+    '🚀 Earn Money': 'Earn Money modules coming soon.'
   };
 
   if (stubs[text]) {
