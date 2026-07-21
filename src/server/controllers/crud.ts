@@ -42,7 +42,14 @@ export const createDocument = (collectionName: string) => async (req: Request, r
       }
     }
 
-    const docRef = await db.collection(collectionName).add(docData);
+    let docRef;
+    if (data.id) {
+       docRef = db.collection(collectionName).doc(data.id);
+       delete docData.id;
+       await docRef.set(docData);
+    } else {
+       docRef = await db.collection(collectionName).add(docData);
+    }
     res.status(201).json({ id: docRef.id, ...docData });
   } catch (error: any) {
     console.error(`Error creating document in ${collectionName}:`, error);
@@ -77,10 +84,21 @@ export const getDocuments = (collectionName: string) => async (req: Request, res
     }
 
     if (searchField && searchValue) {
-       // Using >= and <= for basic prefix search on strings
-       const searchStr = String(searchValue);
-       query = query.where(String(searchField), '>=', searchStr)
-                    .where(String(searchField), '<=', searchStr + '\uf8ff');
+       const exactMatch = req.query.exactMatch === 'true';
+       const isNumeric = req.query.isNumeric === 'true';
+       
+       let finalSearchValue: any = String(searchValue);
+       if (isNumeric) {
+         finalSearchValue = Number(searchValue);
+       }
+       
+       if (exactMatch) {
+         query = query.where(String(searchField), '==', finalSearchValue);
+       } else {
+         // Using >= and <= for basic prefix search on strings
+         query = query.where(String(searchField), '>=', finalSearchValue)
+                      .where(String(searchField), '<=', finalSearchValue + '\uf8ff');
+       }
     }
 
     // Cursor-based pagination

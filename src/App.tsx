@@ -14,6 +14,7 @@ import BotDashboardLayout from './pages/BotDashboardLayout';
 import UsersList from './pages/UsersList';
 import ChannelsList from './pages/ChannelsList';
 import GroupsList from './pages/GroupsList';
+import ReferralsList from './pages/ReferralsList';
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
                 <Route path="users" element={<UsersList />} />
                 <Route path="channels" element={<ChannelsList />} />
                 <Route path="groups" element={<GroupsList />} />
+                <Route path="referrals" element={<ReferralsList />} />
               </Route>
             </Route>
           </Route>

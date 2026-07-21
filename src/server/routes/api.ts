@@ -91,7 +91,8 @@ const collections = [
   'users',
   'settings',
   'channels',
-  'groups'
+  'groups',
+  'referrals'
 ];
 
 collections.forEach(collection => {

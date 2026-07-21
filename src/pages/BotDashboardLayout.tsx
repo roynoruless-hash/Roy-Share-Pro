@@ -54,6 +54,7 @@ export default function BotDashboardLayout() {
     { name: 'Users', href: `/bots/${botId}/users`, icon: Users },
     { name: 'Channels', href: `/bots/${botId}/channels`, icon: MessageSquare },
     { name: 'Groups', href: `/bots/${botId}/groups`, icon: Users },
+    { name: 'Referrals', href: `/bots/${botId}/referrals`, icon: Users },
   ];
 
   return (
