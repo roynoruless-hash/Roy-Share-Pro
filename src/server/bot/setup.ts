@@ -59,7 +59,29 @@ export function setupBot(bot: Bot<CustomContext>) {
 
     const payload = ctx.match;
     if (payload && payload.startsWith('ref_')) {
-      ctx.session.referredBy = payload.replace('ref_', '');
+      const referrerIdStr = payload.replace('ref_', '');
+      ctx.session.referredBy = referrerIdStr;
+      
+      const referrerIdNum = Number(referrerIdStr);
+      if (!isNaN(referrerIdNum) && referrerIdNum !== telegramId) {
+        const existingRef = await db.collection('referrals')
+          .where('botId', '==', ctx.botId)
+          .where('referrerId', '==', referrerIdNum)
+          .where('referredUserId', '==', telegramId)
+          .limit(1).get();
+          
+        if (existingRef.empty) {
+          await db.collection('referrals').add({
+            botId: ctx.botId,
+            referrerId: referrerIdNum,
+            referredUserId: telegramId,
+            status: 'pending',
+            rewardAmount: 0,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+        }
+      }
     }
 
     const isMember = await checkMembership(ctx);
@@ -232,6 +254,22 @@ export function setupBot(bot: Bot<CustomContext>) {
        const userId = userRef.id;
        const walletRef = db.collection('wallets').doc();
 
+       let pendingReferralRef: any = null;
+       if (ctx.session.referredBy) {
+          const referredByNum = Number(ctx.session.referredBy);
+          if (!isNaN(referredByNum)) {
+             const existingRefSnap = await db.collection('referrals')
+                .where('botId', '==', ctx.botId)
+                .where('referrerId', '==', referredByNum)
+                .where('referredUserId', '==', ctx.from?.id)
+                .where('status', '==', 'pending')
+                .limit(1).get();
+             if (!existingRefSnap.empty) {
+                pendingReferralRef = existingRefSnap.docs[0].ref;
+             }
+          }
+       }
+
        const batch = db.batch();
        
        batch.set(userRef, {
@@ -287,16 +325,16 @@ export function setupBot(bot: Bot<CustomContext>) {
                 referrerId = referrer.telegramId;
                 rewardAmount = configuredReward;
                 
-                const referralRef = db.collection('referrals').doc();
+                const referralRef = pendingReferralRef || db.collection('referrals').doc();
                 batch.set(referralRef, {
                    botId: ctx.botId,
                    referrerId: referrer.telegramId,
-                   referredUserId: userId,
+                   referredUserId: ctx.from?.id,
                    status: 'completed', // Auto-completed because they verified and are members
                    rewardAmount: rewardAmount,
                    createdAt: new Date(),
                    updatedAt: new Date()
-                });
+                }, { merge: true });
                 
                 if (rewardAmount > 0) {
                    // Update referrer's wallet inside the same transaction batch
@@ -310,17 +348,17 @@ export function setupBot(bot: Bot<CustomContext>) {
                 }
              } else {
                 // Not a member anymore, keep it as failed/pending and don't credit
-                const referralRef = db.collection('referrals').doc();
+                const referralRef = pendingReferralRef || db.collection('referrals').doc();
                 batch.set(referralRef, {
                    botId: ctx.botId,
                    referrerId: referrer.telegramId,
-                   referredUserId: userId,
+                   referredUserId: ctx.from?.id,
                    status: 'failed',
                    rewardAmount: 0,
                    reason: 'User left mandatory channels before completing registration',
                    createdAt: new Date(),
                    updatedAt: new Date()
-                });
+                }, { merge: true });
              }
           }
        }

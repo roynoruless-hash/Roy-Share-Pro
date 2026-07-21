@@ -57,9 +57,40 @@ Status: ${user.status}`;
      return;
   }
 
+  if (text === '👥 Refer & Earn') {
+     const settingsSnap = await db.collection('settings').doc(ctx.botId).get();
+     const rewardAmount = settingsSnap.exists ? (settingsSnap.data()?.referralReward || 0) : 0;
+
+     const referralsSnap = await db.collection('referrals')
+       .where('botId', '==', ctx.botId)
+       .where('referrerId', '==', telegramId)
+       .get();
+     
+     let completedCount = 0;
+     let pendingCount = 0;
+     let totalEarned = 0;
+
+     referralsSnap.docs.forEach(doc => {
+       const data = doc.data();
+       if (data.status === 'completed') {
+         completedCount++;
+         totalEarned += (data.rewardAmount || 0);
+       } else if (data.status === 'pending') {
+         pendingCount++;
+       }
+     });
+
+     const botUsername = ctx.me.username;
+     const referralLink = `https://t.me/${botUsername}?start=ref_${telegramId}`;
+
+     const textMsg = `👥 *Refer & Earn*\n\nShare your unique referral link with your friends and earn *${rewardAmount}* for each successful registration!\n\n🔗 *Your Referral Link:*\n\`${referralLink}\`\n\n📊 *Your Statistics:*\n✅ Total Successful Referrals: ${completedCount}\n⏳ Pending Referrals: ${pendingCount}\n💰 Total Earned from Referrals: ${totalEarned}`;
+
+     await ctx.reply(textMsg, { parse_mode: 'Markdown' });
+     return;
+  }
+
   // Stub other handlers
   const stubs: Record<string, string> = {
-    '👥 Refer & Earn': 'Refer & Earn module coming soon.',
     '💸 Withdraw': 'Withdrawal module coming soon.',
     '🚀 Earn Money': 'Earn Money modules coming soon.',
     '📊 History': 'History module coming soon.',
