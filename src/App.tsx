@@ -12,6 +12,8 @@ import Login from './pages/Login';
 import BotsList from './pages/BotsList';
 import BotDashboardLayout from './pages/BotDashboardLayout';
 import UsersList from './pages/UsersList';
+import ChannelsList from './pages/ChannelsList';
+import GroupsList from './pages/GroupsList';
 
 export default function App() {
   return (
@@ -25,6 +27,8 @@ export default function App() {
               <Route path="/" element={<BotsList />} />
               <Route path="/bots/:botId" element={<BotDashboardLayout />}>
                 <Route path="users" element={<UsersList />} />
+                <Route path="channels" element={<ChannelsList />} />
+                <Route path="groups" element={<GroupsList />} />
               </Route>
             </Route>
           </Route>

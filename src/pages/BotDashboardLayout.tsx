@@ -52,6 +52,8 @@ export default function BotDashboardLayout() {
 
   const tabs = [
     { name: 'Users', href: `/bots/${botId}/users`, icon: Users },
+    { name: 'Channels', href: `/bots/${botId}/channels`, icon: MessageSquare },
+    { name: 'Groups', href: `/bots/${botId}/groups`, icon: Users },
   ];
 
   return (

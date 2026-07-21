@@ -9,12 +9,12 @@ export async function checkMembershipSilent(ctx: CustomContext): Promise<boolean
   
   if (!userId) return false;
 
-  const channelsSnap = await db.collection('channels').where('botId', '==', botId).where('isMandatory', '==', true).get();
-  const groupsSnap = await db.collection('groups').where('botId', '==', botId).where('isMandatory', '==', true).get();
+  const channelsSnap = await db.collection('channels').where('botId', '==', botId).get();
+  const groupsSnap = await db.collection('groups').where('botId', '==', botId).get();
 
   const mandatoryChats: any[] = [
-    ...channelsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    ...groupsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+    ...channelsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })).filter(c => c.isMandatory === true),
+    ...groupsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })).filter(g => g.isMandatory === true)
   ];
 
   if (mandatoryChats.length === 0) return true;
@@ -42,12 +42,12 @@ export async function checkMembership(ctx: CustomContext): Promise<boolean> {
   
   if (!userId) return false;
 
-  const channelsSnap = await db.collection('channels').where('botId', '==', botId).where('isMandatory', '==', true).get();
-  const groupsSnap = await db.collection('groups').where('botId', '==', botId).where('isMandatory', '==', true).get();
+  const channelsSnap = await db.collection('channels').where('botId', '==', botId).get();
+  const groupsSnap = await db.collection('groups').where('botId', '==', botId).get();
 
   const mandatoryChats: any[] = [
-    ...channelsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    ...groupsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+    ...channelsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })).filter(c => c.isMandatory === true),
+    ...groupsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) })).filter(g => g.isMandatory === true)
   ];
 
   if (mandatoryChats.length === 0) return true;
