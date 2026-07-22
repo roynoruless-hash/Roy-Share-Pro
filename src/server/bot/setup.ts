@@ -4,7 +4,7 @@ import { CustomContext } from './context.js';
 import { firestoreStorage } from './session.js';
 import { getDb } from '../config/firebase.js';
 import { checkMembership, checkMembershipSilent } from './middleware/membership.js';
-import { sendMainMenu, handleMenuText } from './menus/main.js';
+import { sendMainMenu, handleMenuText, sendHowItWorks } from './menus/main.js';
 
 export function setupBot(bot: Bot<CustomContext>) {
   bot.use(session({
@@ -412,6 +412,7 @@ export function setupBot(bot: Bot<CustomContext>) {
 
        ctx.session.state = 'registered';
        await ctx.reply("Registration successful! 🎉");
+       await sendHowItWorks(ctx);
        await sendMainMenu(ctx);
        return;
     }

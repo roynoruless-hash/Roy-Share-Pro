@@ -14,6 +14,7 @@ interface Withdrawal {
   methodDetail?: string;
   status: 'pending' | 'approved' | 'rejected';
   reason?: string;
+  redeemCode?: string;
   createdAt: any;
 }
 
@@ -36,6 +37,8 @@ export default function WithdrawalsList() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [approvingRedeemId, setApprovingRedeemId] = useState<string | null>(null);
+  const [redeemCode, setRedeemCode] = useState('');
 
   const fetchData = async () => {
     if (!user) return;
@@ -113,6 +116,11 @@ export default function WithdrawalsList() {
   };
 
   const handleApprove = async (withdrawal: Withdrawal) => {
+    if (withdrawal.method === 'Redeem Code') {
+      setApprovingRedeemId(withdrawal.id);
+      return;
+    }
+    
     if (!user || !window.confirm('Are you sure you want to approve this withdrawal?')) return;
     try {
       const token = await user.getIdToken();
@@ -124,6 +132,31 @@ export default function WithdrawalsList() {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || 'Failed to approve');
       }
+      fetchData();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const handleRedeemApprove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !approvingRedeemId || !redeemCode.trim()) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/withdrawals/${approvingRedeemId}/approve`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ redeemCode: redeemCode.trim() })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to approve');
+      }
+      setApprovingRedeemId(null);
+      setRedeemCode('');
       fetchData();
     } catch (err: any) {
       alert(err.message);
@@ -263,6 +296,7 @@ export default function WithdrawalsList() {
                         {w.status.charAt(0).toUpperCase() + w.status.slice(1)}
                       </span>
                       {w.reason && <div className="text-xs text-red-500 mt-1 max-w-[150px] truncate" title={w.reason}>{w.reason}</div>}
+                      {w.redeemCode && <div className="text-xs text-green-600 mt-1 max-w-[150px] font-mono truncate" title={w.redeemCode}>{w.redeemCode}</div>}
                     </td>
                     <td className="px-4 py-3 text-gray-500">
                       {w.createdAt ? new Date((w.createdAt._seconds ? w.createdAt._seconds * 1000 : (w.createdAt.seconds ? w.createdAt.seconds * 1000 : w.createdAt)) as any).toLocaleDateString() : 'N/A'}
@@ -321,6 +355,42 @@ export default function WithdrawalsList() {
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
                 >
                   Confirm Reject
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {approvingRedeemId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Send Redeem Code</h3>
+            <form onSubmit={handleRedeemApprove}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Redeem Code</label>
+                <input
+                  type="text"
+                  required
+                  value={redeemCode}
+                  onChange={(e) => setRedeemCode(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="e.g. XXXX-XXXX-XXXX"
+                />
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => { setApprovingRedeemId(null); setRedeemCode(''); }}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                >
+                  Send Code
                 </button>
               </div>
             </form>

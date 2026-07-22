@@ -7,10 +7,37 @@ export async function sendMainMenu(ctx: CustomContext) {
     .text('💰 Balance').text('👥 Refer & Earn').row()
     .text('💸 Withdraw').text('🚀 Earn Money').row()
     .text('👤 Profile').text('📊 History').row()
-    .text('📞 Support')
+    .text('ℹ️ How it Works').text('📞 Support').row()
     .resized();
     
   await ctx.reply("Main Menu:", { reply_markup: keyboard });
+}
+
+export async function sendHowItWorks(ctx: CustomContext) {
+  const helpText = `🤖 *Welcome to our Rewards Bot!*
+
+Here is a quick guide on how to use this bot to earn and withdraw funds:
+
+*1. 👥 Refer & Earn*
+Share your unique referral link with your friends. When they join using your link, you instantly earn a referral bonus! Check the 'Refer & Earn' menu for your link.
+
+*2. 💰 Balance & 👤 Profile*
+Track your current wallet balance, total earnings, pending earnings, and withdrawn amount in the 'Balance' tab. View your account status in 'Profile'.
+
+*3. 💸 Withdraw*
+Once you reach the minimum withdrawal amount, you can request a payout. 
+• *UPI*: Get funds directly to your bank account.
+• *Redeem Code*: Get Play Store / App Store gift cards.
+
+*4. 📊 History*
+Keep track of all your earnings, withdrawals, and referral bonuses in the 'History' tab.
+
+*5. 📞 Support*
+Need help? Contact our support team via the 'Support' menu.
+
+🚀 *Start earning today by sharing your referral link!*`;
+
+  await ctx.reply(helpText, { parse_mode: 'Markdown' });
 }
 
 export async function handleMenuText(ctx: CustomContext, text: string) {
@@ -190,6 +217,11 @@ Status: ${user.status}`;
      }
      
      await ctx.reply(supportMsg);
+     return;
+  }
+
+  if (text === 'ℹ️ How it Works') {
+     await sendHowItWorks(ctx);
      return;
   }
 

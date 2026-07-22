@@ -11,6 +11,7 @@ router.post('/:id/approve', async (req, res) => {
   try {
     const db = getDb();
     const { id } = req.params;
+    const { redeemCode } = req.body || {};
     
     await db.runTransaction(async (t) => {
       const withdrawalRef = db.collection('withdrawals').doc(id);
@@ -20,6 +21,10 @@ router.post('/:id/approve', async (req, res) => {
       const withdrawal = withdrawalSnap.data()!;
       
       if (withdrawal.status !== 'pending') throw new Error("Withdrawal is not pending");
+      
+      if (withdrawal.method === 'Redeem Code' && !redeemCode) {
+         throw new Error("Redeem code is required for Redeem Code withdrawals");
+      }
       
       // We must authorize the user for this bot (crud already checks this for GET but we need to do it here manually)
       if (req.adminUser?.role !== 'superadmin' && req.adminUser?.assignedBots?.includes(withdrawal.botId) === false) {
@@ -39,8 +44,13 @@ router.post('/:id/approve', async (req, res) => {
       
       const wallet = walletSnap.data()!;
       
+      const updateData: any = { status: 'approved', updatedAt: new Date() };
+      if (withdrawal.method === 'Redeem Code') {
+         updateData.redeemCode = redeemCode;
+      }
+      
       // Update withdrawal status
-      t.update(withdrawalRef, { status: 'approved', updatedAt: new Date() });
+      t.update(withdrawalRef, updateData);
       
       // Update wallet: permanent deduct from pending, increment withdrawnAmount
       t.update(walletRef, {
@@ -61,16 +71,22 @@ router.post('/:id/approve', async (req, res) => {
          createdAt: new Date()
       });
       
-      // We also need to notify the user via Telegram here. We'll try dynamic import of bot instance or fetch API
+      // We also need to notify the user via Telegram here
       const botTokenSnap = await db.collection('bots').doc(withdrawal.botId).get();
       if (botTokenSnap.exists) {
          const token = botTokenSnap.data()!.botToken;
+         
+         let text = `✅ Your withdrawal request for ₹${withdrawal.amount} has been approved and processed successfully.`;
+         if (withdrawal.method === 'Redeem Code') {
+            text = `✅ Your withdrawal request for ₹${withdrawal.amount} has been approved.\n\n🎁 Your redeem code: ${redeemCode}`;
+         }
+         
          fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                chat_id: withdrawal.telegramId,
-               text: `✅ Your withdrawal request for ₹${withdrawal.amount} has been approved and processed successfully.`
+               text: text
             })
          }).catch(e => console.error("Failed to notify user:", e));
       }
