@@ -135,6 +135,11 @@ Status: ${user.status}`;
      const walletSnap = await db.collection('wallets').doc(user.walletId).get();
      const wallet = walletSnap.data();
      
+     if (wallet?.status === 'locked') {
+       await ctx.reply("Your withdrawals are temporarily paused. Your account is under review.");
+       return;
+     }
+     
      const upiMin = settings?.upiMinWithdrawal || 10;
      const redeemMin = settings?.redeemMinWithdrawal || 50;
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Search, Shield, Calendar, X, Eye } from 'lucide-react';
+import { Search, Shield, Calendar, X, Eye, AlertTriangle } from 'lucide-react';
 
 interface UserData {
   id: string;
@@ -11,6 +11,8 @@ interface UserData {
   walletId?: string;
   isVerified: boolean;
   status: 'active' | 'banned';
+  suspicious?: boolean;
+  suspiciousReason?: string;
   createdAt?: { _seconds: number };
   referrerId?: string;
 }
@@ -18,6 +20,7 @@ interface UserData {
 interface WalletData {
   id: string;
   balance: number;
+  status?: 'active' | 'locked';
 }
 
 export default function UsersList() {
@@ -94,6 +97,44 @@ export default function UsersList() {
     if (nextCursor) {
       setIsLoadingMore(true);
       fetchUsers(nextCursor);
+    }
+  };
+
+  const handleToggleHold = async (walletId: string, currentStatus: string | undefined) => {
+    if (!user || !selectedUser) return;
+    const newStatus = currentStatus === 'locked' ? 'active' : 'locked';
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/wallets/${walletId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update wallet status: HTTP ${response.status}`);
+      }
+      
+      setSelectedWallet(prev => prev ? { ...prev, status: newStatus } : null);
+      
+      // If we're unlocking, we might also want to clear the suspicious flag from the user
+      if (newStatus === 'active' && selectedUser.suspicious) {
+        await fetch(`/api/users/${selectedUser.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ suspicious: false, suspiciousReason: null })
+        });
+        setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, suspicious: false, suspiciousReason: undefined } : u));
+        setSelectedUser(prev => prev ? { ...prev, suspicious: false, suspiciousReason: undefined } : null);
+      }
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
@@ -213,7 +254,8 @@ export default function UsersList() {
                         <div>
                           <div className="font-medium text-gray-900 flex items-center gap-2">
                             {u.telegramUsername ? `@${u.telegramUsername}` : `ID: ${u.telegramId}`}
-                            {u.isVerified && <Shield className="w-4 h-4 text-green-500" />}
+                            {u.isVerified && <Shield className="w-4 h-4 text-green-500" title="Verified" />}
+                            {u.suspicious && <AlertTriangle className="w-4 h-4 text-orange-500" title={u.suspiciousReason} />}
                           </div>
                         </div>
                       </div>
@@ -309,15 +351,44 @@ export default function UsersList() {
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                <label className="block text-sm text-gray-500 mb-2">Wallet Balance</label>
+                <div className="flex justify-between items-start mb-2">
+                  <label className="block text-sm text-gray-500">Wallet Balance</label>
+                  {selectedUser.suspicious && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title={selectedUser.suspiciousReason}>
+                      <AlertTriangle className="w-3.5 h-3.5" /> Flagged
+                    </span>
+                  )}
+                </div>
                 {selectedWallet ? (
-                  <div className="text-2xl font-bold text-gray-900">
-                    ${selectedWallet.balance.toFixed(2)}
+                  <div className="flex items-center justify-between">
+                    <div className="text-2xl font-bold text-gray-900">
+                      ${selectedWallet.balance.toFixed(2)}
+                    </div>
+                    {selectedWallet.status === 'locked' ? (
+                      <button
+                        onClick={() => handleToggleHold(selectedWallet.id, selectedWallet.status)}
+                        className="px-3 py-1.5 bg-green-50 text-green-600 rounded-lg font-medium text-sm hover:bg-green-100 transition-colors"
+                      >
+                        Un-Hold Payment
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleToggleHold(selectedWallet.id, selectedWallet.status)}
+                        className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg font-medium text-sm hover:bg-orange-100 transition-colors"
+                      >
+                        Hold Payment
+                      </button>
+                    )}
                   </div>
                 ) : selectedUser.walletId ? (
                   <div className="text-gray-500 text-sm">Loading balance...</div>
                 ) : (
                   <div className="text-gray-500 text-sm">No wallet found</div>
+                )}
+                {selectedWallet?.status === 'locked' && (
+                  <p className="text-xs text-orange-600 mt-2">
+                    Withdrawals are currently paused for this user.
+                  </p>
                 )}
               </div>
               

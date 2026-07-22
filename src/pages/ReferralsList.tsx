@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Save, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Save, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
 
 interface Referral {
   id: string;
@@ -11,6 +11,8 @@ interface Referral {
   status: 'pending' | 'completed' | 'failed';
   rewardAmount: number;
   reason?: string;
+  suspicious?: boolean;
+  suspiciousReason?: string;
   createdAt: { _seconds: number, _nanoseconds: number } | string;
 }
 
@@ -244,6 +246,11 @@ export default function ReferralsList() {
                       {ref.status === 'pending' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                           <Clock className="w-3.5 h-3.5" /> Pending
+                        </span>
+                      )}
+                      {ref.suspicious && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 ml-2 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title={ref.suspiciousReason}>
+                          <AlertTriangle className="w-3.5 h-3.5" /> Suspicious
                         </span>
                       )}
                     </td>

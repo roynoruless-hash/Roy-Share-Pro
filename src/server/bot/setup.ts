@@ -121,6 +121,21 @@ export function setupBot(bot: Bot<CustomContext>) {
     const db = getDb();
     const method = ctx.match === 'withdraw_upi' ? 'UPI' : 'Redeem Code';
     
+    // Check if wallet is locked
+    const userSnap = await db.collection('users')
+       .where('botId', '==', ctx.botId)
+       .where('telegramId', '==', ctx.from?.id)
+       .limit(1).get();
+       
+    if (!userSnap.empty) {
+       const user = userSnap.docs[0].data();
+       const walletSnap = await db.collection('wallets').doc(user.walletId).get();
+       if (walletSnap.exists && walletSnap.data()!.status === 'locked') {
+          await ctx.answerCallbackQuery({ text: "Your withdrawals are temporarily paused for review.", show_alert: true });
+          return;
+       }
+    }
+    
     // Check pending withdrawals
     const pendingSnap = await db.collection('withdrawals')
       .where('botId', '==', ctx.botId)
@@ -330,6 +345,7 @@ export function setupBot(bot: Bot<CustomContext>) {
        let referrerId: number | null = null;
        let rewardAmount = 0;
        let referrerWalletRef: any = null;
+       let newlyFlaggedReferrerId: number | null = null;
 
        if (ctx.session.referredBy) {
           const referredByNum = Number(ctx.session.referredBy);
@@ -352,10 +368,37 @@ export function setupBot(bot: Bot<CustomContext>) {
              
              if (stillMember) {
                 referrerId = referrer.telegramId;
+                
+                // --- Fraud Detection ---
+                const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000);
+                const recentRefsSnap = await db.collection('referrals')
+                  .where('botId', '==', ctx.botId)
+                  .where('referrerId', '==', referrer.telegramId)
+                  .where('status', '==', 'completed')
+                  .where('createdAt', '>=', tenMinsAgo)
+                  .get();
+                
+                let isSuspicious = false;
+                const suspiciousReason = "Rapid referral pattern detected";
+                
+                if (recentRefsSnap.size >= 3) {
+                  isSuspicious = true;
+                }
+                
+                if (isSuspicious && !referrer.suspicious) {
+                  newlyFlaggedReferrerId = referrer.telegramId;
+                  batch.update(referrerSnap.docs[0].ref, {
+                    suspicious: true,
+                    suspiciousReason: suspiciousReason
+                  });
+                }
+                // -----------------------
+
                 rewardAmount = configuredReward;
                 
                 const referralRef = pendingReferralRef || db.collection('referrals').doc();
-                batch.set(referralRef, {
+                
+                const referralData: any = {
                    botId: ctx.botId,
                    referrerId: referrer.telegramId,
                    referredUserId: ctx.from?.id,
@@ -363,7 +406,14 @@ export function setupBot(bot: Bot<CustomContext>) {
                    rewardAmount: rewardAmount,
                    createdAt: new Date(),
                    updatedAt: new Date()
-                }, { merge: true });
+                };
+                
+                if (isSuspicious) {
+                   referralData.suspicious = true;
+                   referralData.suspiciousReason = suspiciousReason;
+                }
+                
+                batch.set(referralRef, referralData, { merge: true });
                 
                 if (rewardAmount > 0) {
                    // Update referrer's wallet inside the same transaction batch
@@ -408,6 +458,10 @@ export function setupBot(bot: Bot<CustomContext>) {
        // Asynchronously notify referrer if they got a reward
        if (referrerId && rewardAmount > 0) {
           ctx.api.sendMessage(referrerId, `🎉 Congratulations! Your referral has registered successfully.\nYou have earned ${rewardAmount} as a reward!`).catch(console.error);
+       }
+       
+       if (newlyFlaggedReferrerId) {
+          ctx.api.sendMessage(newlyFlaggedReferrerId, `⚠️ Your account is currently under review for unusual referral activity. Withdrawals may be temporarily paused.`).catch(console.error);
        }
 
        ctx.session.state = 'registered';

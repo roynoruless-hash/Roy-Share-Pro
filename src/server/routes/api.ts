@@ -100,11 +100,12 @@ collections.forEach(collection => {
   router.use(`/${collection}`, generateCrudRoutes(collection));
 });
 
-// Read-only endpoints for wallets
+// Endpoints for wallets
 const walletsRouter = Router();
 walletsRouter.use(requireAdmin);
 walletsRouter.get('/', getDocuments('wallets'));
 walletsRouter.get('/:id', getDocument('wallets'));
+walletsRouter.put('/:id', updateDocument('wallets'));
 router.use('/wallets', walletsRouter);
 
 // Withdrawals endpoints
